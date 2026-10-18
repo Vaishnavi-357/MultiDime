@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # MultiDime
 
 An AI backend with a web page on top. It answers questions **from your own PDFs**, reviews resumes, matches a resume to a job description with an ATS score, and keeps a history of everything in MySQL.
@@ -203,3 +204,6 @@ There are more than 60 unit tests. They replace Gemini and the database with moc
 
 Original project by **Vaishnavi Rathore**.
 Extended with the web page, MySQL history, resumable PDF indexing, input validation, API documentation and tests by **Vaishnavi Rathore**.
+=======
+# MultiDime
+>>>>>>> ab1f92c9f939cedf3a91621fb4915d2cc34bd825
