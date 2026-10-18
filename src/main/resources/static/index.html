@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MultiDime</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230E3B36'/%3E%3Cpath d='M8 22 L15 11 L24 18' fill='none' stroke='%23F0A91E' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='8' cy='22' r='2.6' fill='%23FBFCFB'/%3E%3Ccircle cx='15' cy='11' r='2.6' fill='%23FBFCFB'/%3E%3Ccircle cx='24' cy='18' r='2.6' fill='%23FBFCFB'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pine:#0E3B36;
+  --pine-2:#164D46;
+  --paper:#EDF1F0;
+  --surface:#FBFCFB;
+  --line:#CBD6D3;
+  --ink:#18231F;
+  --muted:#5B6B66;
+  --saffron:#F0A91E;
+  --good:#1F8A5B;
+  --mid:#C98A0B;
+  --low:#BE3F2B;
+  --found-bg:#D8EADF;
+  --found-ink:#0E3B36;
+  --miss-bg:#F7E6BE;
+  --miss-ink:#5E3D00;
+  --font:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%}
+body{margin:0;font:16px/1.55 var(--font);color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- layout ---------- */
+.app{display:grid;grid-template-columns:272px minmax(0,1fr);height:100dvh}
+.rail{background:var(--pine);color:#E7F0ED;padding:28px 18px 22px;display:flex;flex-direction:column;gap:22px;min-height:0}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.25rem;letter-spacing:-.01em;color:#fff;padding-inline:6px}
+.brand svg{flex:none}
+.tagline{margin:0;padding-inline:6px;color:#A9C3BC;font-size:.95rem;line-height:1.45}
+.nav{display:flex;flex-direction:column;gap:4px}
+.tab{appearance:none;border:0;background:transparent;text-align:left;cursor:pointer;color:#BFD3CE;padding:10px 12px;border-radius:6px;font-weight:500}
+.tab:hover{background:rgba(255,255,255,.07);color:#fff}
+.tab[aria-selected="true"]{background:rgba(255,255,255,.12);color:#fff;box-shadow:inset 3px 0 0 var(--saffron)}
+.tab:focus-visible{outline:2px solid var(--saffron);outline-offset:2px}
+.status{margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,.14);font-size:.9rem;color:#BFD3CE}
+.status-line{display:flex;align-items:center;gap:8px}
+.dot{width:9px;height:9px;border-radius:50%;background:#7F928D;flex:none}
+.status[data-state="up"] .dot{background:#4FD08F}
+.status[data-state="down"] .dot{background:#F2705B}
+.status-help{margin:6px 0 0 17px;font-size:.85rem;color:#A9C3BC}
+.status-help code{background:rgba(255,255,255,.1);padding:1px 5px;border-radius:4px;font-size:.82rem}
+
+main{min-width:0;min-height:0}
+.panel{height:100%;display:flex;flex-direction:column;min-height:0}
+.panel.scroll{overflow-y:auto}
+.panel-head,.content,.chat-body>*{width:100%;max-width:980px;padding-inline:40px}
+.panel-head{padding-top:30px;padding-bottom:14px}
+.panel-head h1{margin:0 0 6px;font-size:1.8rem;line-height:1.15;font-weight:600;letter-spacing:-.015em}
+.panel-head p{margin:0;color:var(--muted);max-width:60ch}
+.content{padding-bottom:56px}
+
+/* ---------- chat ---------- */
+.chat-body{display:flex;flex-direction:column;flex:1;min-height:0}
+.messages{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:20px;padding-top:12px;padding-bottom:12px}
+.empty{margin:auto 0;padding-block:8px}
+.empty h2{margin:0 0 4px;font-size:1.05rem;font-weight:600}
+.empty p{margin:0 0 14px;color:var(--muted)}
+.suggest{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.suggest button{appearance:none;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 16px;text-align:left}
+.suggest button:hover{border-color:var(--pine);background:#fff}
+.suggest button:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.msg{max-width:100%}
+.msg.user{align-self:flex-end;max-width:min(78%,640px);background:var(--pine);color:#fff;padding:10px 15px;border-radius:14px 14px 4px 14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.bot{max-width:72ch;padding-left:16px;border-left:2px solid var(--line);overflow-wrap:anywhere}
+.msg.bot.pending{color:var(--muted)}
+.msg.bot.error{color:#8F2A1B;border-left-color:var(--low)}
+.composer{padding-top:8px;padding-bottom:18px}
+.composer-row{display:flex;gap:10px;align-items:flex-end;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 8px 8px 14px}
+.composer-row:focus-within{border-color:var(--pine);box-shadow:0 0 0 2px rgba(14,59,54,.18)}
+.composer textarea{flex:1;border:0;outline:0;resize:none;background:transparent;padding:6px 0;max-height:160px;line-height:1.45}
+.hint{margin:8px 2px 0;font-size:.85rem;color:var(--muted)}
+
+/* ---------- buttons ---------- */
+.btn{appearance:none;border:0;cursor:pointer;background:var(--pine);color:#fff;font-weight:600;padding:10px 20px;border-radius:6px}
+.btn:hover:not(:disabled){background:var(--pine-2)}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn:focus-visible{outline:2px solid var(--saffron);outline-offset:2px}
+
+/* ---------- forms ---------- */
+.form{display:flex;flex-direction:column;gap:18px;max-width:720px}
+.field>label,.field>.label{display:block;font-weight:600;margin-bottom:6px}
+.drop{display:flex;align-items:center;gap:14px;min-height:92px;padding:16px 18px;border:1.5px dashed #9FB2AD;border-radius:10px;background:var(--surface);cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--pine);background:#fff}
+.drop:focus-within{outline:2px solid var(--pine);outline-offset:2px}
+.drop-icon{flex:none;color:var(--pine)}
+.drop-text strong{display:block;font-weight:600}
+.drop-text span{color:var(--muted);font-size:.92rem}
+.drop-file{display:flex;align-items:center;gap:14px;width:100%}
+.drop-error{display:block;margin-top:8px;color:#8F2A1B;font-size:.92rem}
+.drop-file .name{font-weight:600;overflow-wrap:anywhere}
+.drop-file .size{color:var(--muted);font-size:.92rem}
+.drop-file .grow{flex:1;min-width:0}
+.link-btn{appearance:none;border:0;background:none;cursor:pointer;color:var(--pine);text-decoration:underline;padding:4px;font-weight:500}
+.link-btn:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+textarea.jd{width:100%;min-height:150px;resize:vertical;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--surface);line-height:1.5}
+textarea.jd:focus-visible{outline:2px solid var(--pine);outline-offset:1px}
+.run{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.run-status{color:var(--muted);font-size:.95rem}
+
+/* ---------- results ---------- */
+.result{margin-top:30px;padding-top:26px;border-top:1px solid var(--line);max-width:720px}
+.res-sec{margin-top:26px}
+.res-sec h2{margin:0 0 10px;font-size:1.05rem;font-weight:600}
+.muted{color:var(--muted);margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}
+.chips li{padding:5px 13px;border-radius:999px;font-size:.93rem;font-weight:500}
+.chips.found li{background:var(--found-bg);color:var(--found-ink)}
+.chips.missing li{background:var(--miss-bg);color:var(--miss-ink)}
+.points{margin:0;padding-left:1.15em}
+.points li{margin-bottom:9px;padding-left:4px}
+.points li::marker{color:var(--saffron)}
+.summary{margin:0;max-width:62ch}
+.raw{white-space:pre-wrap;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;font-size:.92rem;overflow-wrap:anywhere}
+.error-box{background:#FBEAE6;border:1px solid #E7B9AF;color:#7E2417;border-radius:6px;padding:12px 14px;max-width:720px}
+
+/* score meter: a ruler with a marker at the score */
+.meter{--band:var(--good)}
+.meter[data-band="mid"]{--band:var(--mid)}
+.meter[data-band="low"]{--band:var(--low)}
+.readout{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 14px}
+.readout .num{font-size:clamp(3.6rem,9vw,5.6rem);font-weight:700;line-height:1;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+.readout .of{color:var(--muted)}
+.readout .verdict{font-weight:600;color:var(--band)}
+.scale{position:relative;height:58px;margin:16px 14px 0}
+.scale .base,.scale .fill{position:absolute;left:0;top:14px;height:6px;border-radius:3px}
+.scale .base{right:0;background:#D9E2DF}
+.scale .fill{width:0;background:var(--band);transition:width 1s cubic-bezier(.2,.7,.2,1)}
+.scale .marker{position:absolute;top:3px;left:0;width:2px;height:30px;margin-left:-1px;background:var(--ink);transition:left 1s cubic-bezier(.2,.7,.2,1)}
+.scale .marker::before{content:"";position:absolute;top:-5px;left:-5px;width:12px;height:12px;border-radius:50%;background:var(--saffron);border:2px solid var(--ink)}
+.tick{position:absolute;top:27px;width:1px;height:6px;background:#8FA19C}
+.tick.major{height:10px;background:#5B6B66}
+.tick-label{position:absolute;top:39px;transform:translateX(-50%);font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ---------- rendered markdown ---------- */
+.md>:first-child{margin-top:0}
+.md>:last-child{margin-bottom:0}
+.md p{margin:.65em 0}
+.md h3,.md h4,.md h5,.md h6{margin:1.2em 0 .4em;line-height:1.25;font-weight:600}
+.md h3{font-size:1.15rem}.md h4{font-size:1.05rem}.md h5,.md h6{font-size:1rem}
+.md ul,.md ol{margin:.5em 0;padding-left:1.4em}
+.md li{margin:.25em 0}
+.md li::marker{color:var(--muted)}
+.md hr{border:0;border-top:1px solid var(--line);margin:1.2em 0}
+.md code{background:#E1E9E6;padding:1px 5px;border-radius:4px;font-size:.9em}
+.md pre{background:var(--pine);color:#E7F0ED;padding:14px 16px;border-radius:8px;overflow-x:auto;margin:.8em 0}
+.md pre code{background:none;padding:0;color:inherit;font-size:.9rem}
+.md blockquote{margin:.8em 0;padding:2px 14px;border-left:3px solid var(--line);color:var(--muted)}
+.md a{color:var(--pine)}
+.table-wrap{overflow-x:auto;margin:.8em 0}
+.md table{border-collapse:collapse;font-size:.95rem}
+.md th,.md td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+.md th{background:#E1E9E6}
+
+/* ---------- history ---------- */
+.hist-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;max-width:760px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{appearance:none;border:0;background:transparent;padding:8px 16px;cursor:pointer;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--pine);color:#fff}
+.seg button:focus-visible{outline:2px solid var(--saffron);outline-offset:-2px}
+.hist-list{list-style:none;margin:0;padding:0;max-width:760px}
+.hist-item{padding:14px 0;border-top:1px solid var(--line)}
+.hist-item:first-child{border-top:0}
+.hist-top{display:flex;gap:4px 16px;align-items:baseline;flex-wrap:wrap}
+.hist-title{font-weight:600;overflow-wrap:anywhere}
+.hist-meta{color:var(--muted);font-size:.9rem}
+.score-tag{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink)}
+.hist-jd{margin:4px 0 0;overflow-wrap:anywhere}
+.hist-item details{margin-top:8px}
+.hist-item summary{cursor:pointer;color:var(--pine);font-weight:500;width:fit-content}
+.hist-item summary:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.hist-body{margin-top:10px;max-width:72ch}
+.hist-body .result{margin-top:6px;padding-top:0;border-top:0}
+
+/* ---------- small screens ---------- */
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .rail{padding:14px 16px 10px;gap:10px}
+  .tagline{display:none}
+  .nav{flex-direction:row;overflow-x:auto;gap:4px}
+  .tab{white-space:nowrap}
+  .tab[aria-selected="true"]{box-shadow:inset 0 -3px 0 var(--saffron)}
+  .status{margin-top:0;padding-top:8px}
+  .panel-head,.content,.chat-body>*{padding-inline:18px}
+  .panel-head h1{font-size:1.5rem}
+  .msg.user{max-width:88%}
+}
+@media (prefers-reduced-motion:reduce){
+  .scale .fill,.scale .marker{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#164D46"/><path d="M8 22 L15 11 L24 18" fill="none" stroke="#F0A91E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="22" r="2.6" fill="#FBFCFB"/><circle cx="15" cy="11" r="2.6" fill="#FBFCFB"/><circle cx="24" cy="18" r="2.6" fill="#FBFCFB"/></svg>
+      MultiDime
+    </div>
+    <p class="tagline">Resume checks, plus answers drawn from your own PDFs.</p>
+    <nav class="nav" role="tablist" aria-label="Sections" aria-orientation="vertical" id="nav">
+      <button class="tab" role="tab" id="tab-ask" data-panel="ask" aria-controls="panel-ask">Ask AI</button>
+      <button class="tab" role="tab" id="tab-docs" data-panel="docs" aria-controls="panel-docs">Ask my PDFs</button>
+      <button class="tab" role="tab" id="tab-resume" data-panel="resume" aria-controls="panel-resume">Resume review</button>
+      <button class="tab" role="tab" id="tab-match" data-panel="match" aria-controls="panel-match">Job match</button>
+      <button class="tab" role="tab" id="tab-history" data-panel="history" aria-controls="panel-history">History</button>
+    </nav>
+    <div class="status" id="status" data-state="unknown" role="status">
+      <div class="status-line"><span class="dot"></span><span id="status-text">Checking server</span></div>
+      <p class="status-help" id="status-help" hidden>Start it from the project folder with <code>.\mvnw.cmd spring-boot:run</code></p>
+    </div>
+  </aside>
+
+  <main>
+    <section class="panel chat" id="panel-ask" role="tabpanel" aria-labelledby="tab-ask" hidden>
+      <header class="panel-head">
+        <h1>Ask AI</h1>
+        <p>A plain conversation with Gemini. Nothing from your PDFs is used here.</p>
+      </header>
+      <div class="chat-body" id="chat-ask"></div>
+    </section>
+
+    <section class="panel chat" id="panel-docs" role="tabpanel" aria-labelledby="tab-docs" hidden>
+      <header class="panel-head">
+        <h1>Ask my PDFs</h1>
+        <p>Answers come only from the PDFs in the input-data folder, your Java interview questions and notes. If the answer isn't in them, you'll be told.</p>
+      </header>
+      <div class="chat-body" id="chat-docs"></div>
+    </section>
+
+    <section class="panel scroll" id="panel-resume" role="tabpanel" aria-labelledby="tab-resume" hidden>
+      <header class="panel-head">
+        <h1>Resume review</h1>
+        <p>Upload a resume to get a rating out of 10, the skills the AI found, and three ways to improve it.</p>
+      </header>
+      <div class="content">
+        <form class="form" id="form-resume" novalidate>
+          <div class="field">
+            <span class="label" id="lbl-resume">Resume</span>
+            <div data-drop aria-labelledby="lbl-resume"></div>
+          </div>
+          <div class="run">
+            <button class="btn" type="submit" disabled>Review resume</button>
+            <span class="run-status" aria-live="polite"></span>
+          </div>
+        </form>
+        <div id="out-resume" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="panel scroll" id="panel-match" role="tabpanel" aria-labelledby="tab-match" hidden>
+      <header class="panel-head">
+        <h1>Job match</h1>
+        <p>Upload a resume and paste a job description. You get a match score, the keywords you already have, and the ones you're missing.</p>
+      </header>
+      <div class="content">
+        <form class="form" id="form-match" novalidate>
+          <div class="field">
+            <span class="label" id="lbl-match">Resume</span>
+            <div data-drop aria-labelledby="lbl-match"></div>
+          </div>
+          <div class="field">
+            <label for="jd">Job description</label>
+            <textarea class="jd" id="jd" maxlength="10000" placeholder="Paste the full job description here"></textarea>
+          </div>
+          <div class="run">
+            <button class="btn" type="submit" disabled>Check match</button>
+            <span class="run-status" aria-live="polite"></span>
+          </div>
+        </form>
+        <div id="out-match" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="panel scroll" id="panel-history" role="tabpanel" aria-labelledby="tab-history" hidden>
+      <header class="panel-head">
+        <h1>History</h1>
+        <p>Every question you've asked and every resume you've checked, as saved in the MySQL database.</p>
+      </header>
+      <div class="content">
+        <div class="hist-bar">
+          <div class="seg" role="group" aria-label="What to show">
+            <button type="button" data-kind="chats" aria-pressed="true">Questions</button>
+            <button type="button" data-kind="resumes" aria-pressed="false">Resume checks</button>
+          </div>
+          <button class="link-btn" type="button" id="hist-refresh">Refresh</button>
+        </div>
+        <div id="hist-out" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* When this page is served by Spring Boot (http://localhost:8080/) the API is on the same origin.
+   If you open the file directly from disk, talk to the local server instead. */
+const API = location.protocol === 'file:' ? 'http://localhost:8080' : '';
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+};
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// <md>
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function inline(s) {
+  s = esc(s);
+  const codes = [];
+  s = s.replace(/`([^`]+)`/g, (_, c) => { codes.push(c); return '\u0000' + (codes.length - 1) + '\u0000'; });
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, '$1<em>$2</em>');
+  s = s.replace(/\u0000(\d+)\u0000/g, (_, i) => '<code>' + codes[i] + '</code>');
+  return s;
+}
+function renderList(items) {
+  let html = '';
+  const stack = [];
+  for (const it of items) {
+    while (stack.length && it.indent < stack[stack.length - 1].indent) {
+      html += '</li></' + stack.pop().tag + '>';
+    }
+    let top = stack[stack.length - 1];
+    if (top && it.indent === top.indent && it.tag !== top.tag) {
+      html += '</li></' + stack.pop().tag + '>';
+      top = stack[stack.length - 1];
+    }
+    if (!top || it.indent > top.indent) {
+      html += '<' + it.tag + '><li>' + inline(it.text);
+      stack.push({ indent: it.indent, tag: it.tag });
+    } else {
+      html += '</li><li>' + inline(it.text);
+    }
+  }
+  while (stack.length) html += '</li></' + stack.pop().tag + '>';
+  return html;
+}
+function md(src) {
+  const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
+  const out = [];
+  let i = 0;
+  const itemRe = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
+  const hrRe = /^\s*([-*_])(\s*\1){2,}\s*$/;
+  const fenceRe = /^\s*```/;
+  const headRe = /^(#{1,6})\s+(.*)$/;
+  const isSep = l => l != null && l.includes('-') && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l);
+  const startsBlock = (l, n) =>
+    fenceRe.test(l) || headRe.test(l) || hrRe.test(l) || itemRe.test(l) ||
+    /^\s*>/.test(l) || (l.includes('|') && isSep(n));
+  const cells = l => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^\s*$/.test(line)) { i++; continue; }
+
+    if (fenceRe.test(line)) {
+      const buf = [];
+      i++;
+      while (i < lines.length && !fenceRe.test(lines[i])) { buf.push(lines[i]); i++; }
+      i++;
+      out.push('<pre><code>' + esc(buf.join('\n')) + '</code></pre>');
+      continue;
+    }
+    const h = line.match(headRe);
+    if (h) {
+      const lv = h[1].length <= 2 ? 3 : h[1].length === 3 ? 4 : 5;
+      out.push('<h' + lv + '>' + inline(h[2]) + '</h' + lv + '>');
+      i++;
+      continue;
+    }
+    if (hrRe.test(line)) { out.push('<hr>'); i++; continue; }
+    if (/^\s*>/.test(line)) {
+      const buf = [];
+      while (i < lines.length && /^\s*>/.test(lines[i])) { buf.push(lines[i].replace(/^\s*>\s?/, '')); i++; }
+      out.push('<blockquote>' + md(buf.join('\n')) + '</blockquote>');
+      continue;
+    }
+    if (line.includes('|') && isSep(lines[i + 1])) {
+      const head = cells(line);
+      i += 2;
+      const rows = [];
+      while (i < lines.length && lines[i].includes('|') && !/^\s*$/.test(lines[i])) { rows.push(cells(lines[i])); i++; }
+      out.push('<div class="table-wrap"><table><thead><tr>' +
+        head.map(c => '<th>' + inline(c) + '</th>').join('') + '</tr></thead><tbody>' +
+        rows.map(r => '<tr>' + r.map(c => '<td>' + inline(c) + '</td>').join('') + '</tr>').join('') +
+        '</tbody></table></div>');
+      continue;
+    }
+    if (itemRe.test(line)) {
+      const items = [];
+      while (i < lines.length) {
+        const mm = lines[i].match(itemRe);
+        if (mm) {
+          items.push({ indent: mm[1].replace(/\t/g, '  ').length, tag: /\d/.test(mm[2]) ? 'ol' : 'ul', text: mm[3] });
+          i++;
+        } else if (/^\s*$/.test(lines[i]) && i + 1 < lines.length && itemRe.test(lines[i + 1])) {
+          i++;
+        } else if (/^\s{2,}\S/.test(lines[i]) && items.length) {
+          items[items.length - 1].text += ' ' + lines[i].trim();
+          i++;
+        } else break;
+      }
+      out.push(renderList(items));
+      continue;
+    }
+    const buf = [line];
+    i++;
+    while (i < lines.length && !/^\s*$/.test(lines[i]) && !startsBlock(lines[i], lines[i + 1])) { buf.push(lines[i]); i++; }
+    out.push('<p>' + inline(buf.join(' ')) + '</p>');
+  }
+  return out.join('\n');
+}
+// </md>
+
+/* ---------- talking to the Spring Boot API ---------- */
+class ApiError extends Error {
+  constructor(status, message) { super(message); this.status = status; }
+}
+async function api(path, opts) {
+  const res = await fetch(API + path, opts);
+  const raw = await res.text();
+  let data = null;
+  try { data = JSON.parse(raw); } catch (_) { /* not JSON */ }
+  if (!res.ok || (data && data.error)) {
+    const msg = (data && (data.error || data.message)) || raw.slice(0, 300) || res.statusText;
+    throw new ApiError(res.status, String(msg));
+  }
+  return data;
+}
+function friendly(e) {
+  const m = String((e && e.message) || e);
+  if (e instanceof TypeError) {
+    return 'Can\'t reach the server. Start it from the project folder with .\\mvnw.cmd spring-boot:run, then try again.';
+  }
+  if (/429|quota|RESOURCE_EXHAUSTED/i.test(m)) {
+    return 'Gemini\'s free daily limit is used up. It resets once a day, or you can switch to a different API key.';
+  }
+  if (/503|UNAVAILABLE|high demand/i.test(m)) {
+    return 'Gemini is busy right now. Wait a few seconds and send it again.';
+  }
+  if (/404|no longer available|NOT_FOUND/i.test(m)) {
+    return 'Google no longer offers the model named in application.properties. Update spring.ai.openai.chat.options.model and restart the server.';
+  }
+  if (/MaxUploadSize/i.test(m)) {
+    return 'That file is larger than the server accepts (5 MB maximum).';
+  }
+  if (e && e.status === 400 && /^Bad Request$/i.test(m)) {
+    return 'The server didn\'t receive the file or text it needs. Check both fields and try again.';
+  }
+  return m;
+}
+function timer(node, label) {
+  const t0 = Date.now();
+  const tick = () => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    node.textContent = s < 2 ? label : label + ' ' + s + 's' + (s >= 15 ? ' (longer documents can take 30 to 40 seconds)' : '');
+  };
+  tick();
+  const id = setInterval(tick, 1000);
+  return () => clearInterval(id);
+}
+
+/* ---------- server status ---------- */
+const statusEl = $('#status');
+const statusText = $('#status-text');
+const statusHelp = $('#status-help');
+async function checkHealth() {
+  try {
+    const r = await fetch(API + '/api/health', { cache: 'no-store' });
+    if (!r.ok) throw new Error('bad status');
+    statusEl.dataset.state = 'up';
+    statusText.textContent = 'Server connected';
+    statusHelp.hidden = true;
+  } catch (_) {
+    statusEl.dataset.state = 'down';
+    statusText.textContent = 'Server not reachable';
+    statusHelp.hidden = false;
+  }
+}
+
+/* ---------- chat ---------- */
+function createChat(root, cfg) {
+  root.innerHTML =
+    '<div class="messages" role="log" aria-live="polite"></div>' +
+    '<form class="composer">' +
+      '<div class="composer-row">' +
+        '<textarea rows="1" maxlength="4000" aria-label="Your question"></textarea>' +
+        '<button class="btn" type="submit">Send</button>' +
+      '</div>' +
+      '<p class="hint">Enter to send, Shift+Enter for a new line. Each message is answered on its own; earlier messages aren\'t remembered.</p>' +
+    '</form>';
+  const messages = $('.messages', root);
+  const form = $('.composer', root);
+  const input = $('textarea', form);
+  const sendBtn = $('button', form);
+  input.placeholder = cfg.placeholder;
+
+  const empty = el('div', 'empty');
+  empty.appendChild(el('h2', null, 'Try a question'));
+  empty.appendChild(el('p', null, cfg.emptyText));
+  const list = el('div', 'suggest');
+  cfg.suggestions.forEach(q => {
+    const b = el('button', null, q);
+    b.type = 'button';
+    b.addEventListener('click', () => send(q));
+    list.appendChild(b);
+  });
+  empty.appendChild(list);
+  messages.appendChild(empty);
+
+  let busy = false;
+  const grow = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; };
+  input.addEventListener('input', grow);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); }
+  });
+  form.addEventListener('submit', e => { e.preventDefault(); send(input.value); });
+
+  async function send(text) {
+    text = text.trim();
+    if (!text || busy) return;
+    busy = true;
+    sendBtn.disabled = true;
+    empty.remove();
+    input.value = '';
+    grow();
+
+    const userEl = el('div', 'msg user', text);
+    const botEl = el('div', 'msg bot pending');
+    messages.appendChild(userEl);
+    messages.appendChild(botEl);
+    messages.scrollTop = messages.scrollHeight;
+    const stop = timer(botEl, 'Thinking');
+
+    try {
+      const data = await api(cfg.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+      stop();
+      botEl.className = 'msg bot md';
+      botEl.innerHTML = md((data && data.response) || '(The model sent an empty reply.)');
+    } catch (err) {
+      stop();
+      botEl.className = 'msg bot error';
+      botEl.textContent = friendly(err);
+    } finally {
+      busy = false;
+      sendBtn.disabled = false;
+      userEl.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+      input.focus();
+    }
+  }
+}
+
+/* ---------- file picker ---------- */
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' KB';
+  return (b / 1024 / 1024).toFixed(1) + ' MB';
+}
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'txt', 'rtf'];
+function fileProblem(f) {
+  const ext = (f.name.split('.').pop() || '').toLowerCase();
+  if (f.size === 0) return 'That file is empty.';
+  if (f.size > MAX_FILE_BYTES) return 'That file is too large (' + fmtSize(f.size) + '). The limit is 5 MB.';
+  if (!ALLOWED_EXTENSIONS.includes(ext)) return 'That file type isn\'t supported. Use a PDF, Word, text or RTF file.';
+  return null;
+}
+function createDropzone(host, onChange) {
+  host.innerHTML =
+    '<label class="drop">' +
+      '<input class="sr-only" type="file" accept=".pdf,.doc,.docx,.txt,.rtf,application/pdf">' +
+      '<span class="drop-empty" style="display:contents">' +
+        '<svg class="drop-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>' +
+        '<span class="drop-text"><strong>Choose a resume or drop it here</strong><span>PDF, Word or text file</span></span>' +
+      '</span>' +
+      '<span class="drop-file" hidden>' +
+        '<svg class="drop-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7z"/><path d="M14 3v4h4"/></svg>' +
+        '<span class="grow"><span class="name"></span><br><span class="size"></span></span>' +
+        '<button class="link-btn" type="button">Remove</button>' +
+      '</span>' +
+    '</label>' +
+    '<span class="drop-error" role="alert" hidden></span>';
+  const label = $('.drop', host);
+  const input = $('input', host);
+  const emptyView = $('.drop-empty', host);
+  const fileView = $('.drop-file', host);
+  let file = null;
+
+  const set = f => {
+    file = f || null;
+    emptyView.hidden = !!file;
+    emptyView.style.display = file ? 'none' : 'contents';
+    fileView.hidden = !file;
+    if (file) {
+      $('.name', host).textContent = file.name;
+      $('.size', host).textContent = fmtSize(file.size);
+    } else {
+      input.value = '';
+    }
+    onChange(file);
+  };
+  const errorEl = $('.drop-error', host);
+  const choose = f => {
+    if (f) {
+      const problem = fileProblem(f);
+      if (problem) {
+        errorEl.textContent = problem;
+        errorEl.hidden = false;
+        input.value = '';
+        return;
+      }
+    }
+    errorEl.hidden = true;
+    set(f);
+  };
+  input.addEventListener('change', () => choose(input.files[0]));
+  $('.link-btn', host).addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); choose(null); });
+  ['dragenter', 'dragover'].forEach(t => label.addEventListener(t, e => { e.preventDefault(); label.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => label.addEventListener(t, e => { e.preventDefault(); label.classList.remove('over'); }));
+  label.addEventListener('drop', e => { if (e.dataTransfer.files.length) choose(e.dataTransfer.files[0]); });
+  return { get file() { return file; } };
+}
+
+/* ---------- result rendering ---------- */
+function parseAIJson(text) {
+  if (typeof text !== 'string') return null;
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const body = (fenced ? fenced[1] : text).trim();
+  try { return JSON.parse(body); } catch (_) { /* try slicing */ }
+  const a = body.indexOf('{');
+  const b = body.lastIndexOf('}');
+  if (a >= 0 && b > a) { try { return JSON.parse(body.slice(a, b + 1)); } catch (_) { /* give up */ } }
+  return null;
+}
+const toList = v => Array.isArray(v)
+  ? v.map(x => typeof x === 'string' ? x : (x && (x.name || x.skill || x.text)) || JSON.stringify(x))
+  : (v ? [String(v)] : []);
+function section(title) {
+  const s = el('section', 'res-sec');
+  s.appendChild(el('h2', null, title));
+  return s;
+}
+function chips(list, cls, emptyText) {
+  if (!list.length) return el('p', 'muted', emptyText);
+  const ul = el('ul', 'chips ' + cls);
+  list.forEach(x => ul.appendChild(el('li', null, String(x))));
+  return ul;
+}
+function meter(value, max, verdicts, unit) {
+  const ratio = Math.max(0, Math.min(1, value / max));
+  const pct = ratio * 100;
+  const band = ratio >= 0.7 ? 'good' : ratio >= 0.45 ? 'mid' : 'low';
+  const verdict = ratio >= 0.8 ? verdicts[0] : ratio >= 0.6 ? verdicts[1] : ratio >= 0.4 ? verdicts[2] : verdicts[3];
+  const shown = Number.isInteger(value) ? value : Math.round(value * 10) / 10;
+  const step = max >= 100 ? 10 : 1;
+  let ticks = '';
+  for (let v = 0; v <= max; v += step) {
+    const pos = (v / max) * 100;
+    const major = v === 0 || v === max || v === max / 2;
+    ticks += '<span class="tick' + (major ? ' major' : '') + '" style="left:' + pos + '%"></span>';
+    if (major) ticks += '<span class="tick-label" style="left:' + pos + '%">' + v + '</span>';
+  }
+  const wrap = el('div', 'meter');
+  wrap.dataset.band = band;
+  wrap.innerHTML =
+    '<div class="readout"><span class="num">' + shown + '</span><span class="of">out of ' + max + '</span><span class="verdict">' + verdict + '</span></div>' +
+    '<div class="scale" role="img" aria-label="' + unit + ' ' + shown + ' out of ' + max + '">' +
+      '<div class="base"></div><div class="fill"></div><div class="marker"></div>' + ticks +
+    '</div>';
+  const fill = $('.fill', wrap);
+  const marker = $('.marker', wrap);
+  const go = () => { fill.style.width = pct + '%'; marker.style.left = pct + '%'; };
+  if (reduceMotion) go(); else requestAnimationFrame(() => requestAnimationFrame(go));
+  return wrap;
+}
+function rawFallback(box, text) {
+  const s = section('The model\'s reply');
+  s.appendChild(el('p', 'muted', 'The reply wasn\'t in the expected format, so here it is as written.'));
+  s.appendChild(el('div', 'raw', String(text)));
+  box.appendChild(s);
+}
+function renderResume(box, data) {
+  const text = data && data.analysis;
+  const p = parseAIJson(text);
+  box.innerHTML = '';
+  const wrap = el('div', 'result');
+  box.appendChild(wrap);
+  if (!p) { rawFallback(wrap, text || '(empty reply)'); return; }
+
+  const rating = parseFloat(p.rating);
+  const top = section('Rating');
+  if (isNaN(rating)) top.appendChild(el('p', 'muted', 'No rating was returned.'));
+  else top.appendChild(meter(rating, 10, ['Strong resume', 'Solid resume', 'Fair resume', 'Needs work'], 'Rating'));
+  wrap.appendChild(top);
+
+  const skills = section('Skills found');
+  skills.appendChild(chips(toList(p.skills), 'found', 'No skills were detected in this file.'));
+  wrap.appendChild(skills);
+
+  const imp = toList(p.improvements || p.suggestions);
+  const impSec = section('What to improve');
+  if (!imp.length) impSec.appendChild(el('p', 'muted', 'No suggestions were returned.'));
+  else {
+    const ul = el('ul', 'points');
+    imp.forEach(x => ul.appendChild(el('li', null, x)));
+    impSec.appendChild(ul);
+  }
+  wrap.appendChild(impSec);
+}
+function renderMatch(box, data) {
+  const text = data && data.atsReport;
+  const p = parseAIJson(text);
+  box.innerHTML = '';
+  const wrap = el('div', 'result');
+  box.appendChild(wrap);
+  if (!p) { rawFallback(wrap, text || '(empty reply)'); return; }
+
+  const score = parseFloat(p.atsScore != null ? p.atsScore : p.score);
+  const top = section('Match score');
+  if (isNaN(score)) top.appendChild(el('p', 'muted', 'No score was returned.'));
+  else top.appendChild(meter(score, 100, ['Strong match', 'Good match', 'Partial match', 'Weak match'], 'Match score'));
+  wrap.appendChild(top);
+
+  const found = section('Found in your resume');
+  found.appendChild(chips(toList(p.matchedKeywords), 'found', 'None of the job description\'s keywords were found.'));
+  wrap.appendChild(found);
+
+  const miss = section('Missing from your resume');
+  miss.appendChild(chips(toList(p.missingKeywords), 'missing', 'Nothing missing. Your resume covers the keywords in this job description.'));
+  wrap.appendChild(miss);
+
+  if (p.summary) {
+    const sum = section('Summary');
+    sum.appendChild(el('p', 'summary', String(p.summary)));
+    wrap.appendChild(sum);
+  }
+}
+
+/* ---------- upload forms ---------- */
+function setupUploadForm(opts) {
+  const form = $(opts.form);
+  const out = $(opts.out);
+  const btn = $('button[type="submit"]', form);
+  const status = $('.run-status', form);
+  const jd = opts.needsJd ? $('#jd') : null;
+  let busy = false;
+  let file = null;
+
+  const refresh = () => {
+    const ready = !!file && (!jd || jd.value.trim().length > 0);
+    btn.disabled = busy || !ready;
+  };
+  createDropzone($('[data-drop]', form), f => { file = f; refresh(); });
+  if (jd) jd.addEventListener('input', refresh);
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (busy || btn.disabled) return;
+    busy = true;
+    refresh();
+    out.innerHTML = '';
+    const stop = timer(status, opts.busyLabel);
+    const fd = new FormData();
+    fd.append('file', file);
+    if (jd) fd.append('jd', jd.value.trim());
+    try {
+      const data = await api(opts.endpoint, { method: 'POST', body: fd });
+      opts.render(out, data);
+      const r = $('.result', out);
+      if (r) r.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+    } catch (err) {
+      const box = el('div', 'error-box', friendly(err));
+      box.setAttribute('role', 'alert');
+      out.appendChild(box);
+    } finally {
+      stop();
+      status.textContent = '';
+      busy = false;
+      refresh();
+    }
+  });
+}
+
+/* ---------- history ---------- */
+const ENDPOINT_LABEL = { chat: 'Ask AI', ask: 'Ask AI', rag: 'Ask my PDFs' };
+const KIND_LABEL = { ANALYZE: 'Resume review', ATS: 'Job match' };
+const when = iso => {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? '' : d.toLocaleString();
+};
+let histKind = 'chats';
+
+function chatRow(r) {
+  const li = el('li', 'hist-item');
+  const top = el('div', 'hist-top');
+  top.appendChild(el('span', 'hist-title', r.question));
+  top.appendChild(el('span', 'hist-meta', ENDPOINT_LABEL[r.endpoint] || r.endpoint));
+  top.appendChild(el('span', 'hist-meta', when(r.createdAt)));
+  li.appendChild(top);
+  const d = el('details');
+  d.appendChild(el('summary', null, 'Show answer'));
+  const body = el('div', 'hist-body md');
+  body.innerHTML = md(r.answer || '');
+  d.appendChild(body);
+  li.appendChild(d);
+  return li;
+}
+
+function resumeRow(r) {
+  const isAts = r.kind === 'ATS';
+  const li = el('li', 'hist-item');
+  const top = el('div', 'hist-top');
+  top.appendChild(el('span', 'hist-title', r.fileName || 'Untitled file'));
+  top.appendChild(el('span', 'hist-meta', KIND_LABEL[r.kind] || r.kind));
+  if (r.score != null) {
+    top.appendChild(el('span', 'hist-meta score-tag', isAts ? 'Score ' + r.score + ' out of 100' : 'Rating ' + r.score + ' out of 10'));
+  }
+  top.appendChild(el('span', 'hist-meta', when(r.createdAt)));
+  li.appendChild(top);
+  if (isAts && r.jobDescription) {
+    const jd = r.jobDescription.length > 140 ? r.jobDescription.slice(0, 140) + '…' : r.jobDescription;
+    li.appendChild(el('p', 'hist-meta hist-jd', 'Job description: ' + jd));
+  }
+  const d = el('details');
+  d.appendChild(el('summary', null, 'Show result'));
+  const body = el('div', 'hist-body');
+  d.appendChild(body);
+  let rendered = false;
+  d.addEventListener('toggle', () => {
+    if (d.open && !rendered) {
+      rendered = true;
+      if (isAts) renderMatch(body, { atsReport: r.resultText });
+      else renderResume(body, { analysis: r.resultText });
+    }
+  });
+  li.appendChild(d);
+  return li;
+}
+
+async function loadHistory() {
+  const out = $('#hist-out');
+  const kind = histKind;
+  out.innerHTML = '';
+  out.appendChild(el('p', 'muted', 'Loading'));
+  try {
+    const rows = await api('/api/history/' + kind + '?limit=50');
+    if (kind !== histKind) return;
+    out.innerHTML = '';
+    if (!rows.length) {
+      out.appendChild(el('p', 'muted', kind === 'chats'
+        ? 'No questions saved yet. Ask something and it will show up here.'
+        : 'No resume checks saved yet. Review a resume or run a job match and it will show up here.'));
+      return;
+    }
+    const ul = el('ul', 'hist-list');
+    rows.forEach(r => ul.appendChild(kind === 'chats' ? chatRow(r) : resumeRow(r)));
+    out.appendChild(ul);
+  } catch (err) {
+    if (kind !== histKind) return;
+    out.innerHTML = '';
+    const box = el('div', 'error-box', friendly(err));
+    box.setAttribute('role', 'alert');
+    out.appendChild(box);
+  }
+}
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  histKind = b.dataset.kind;
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  loadHistory();
+}));
+$('#hist-refresh').addEventListener('click', loadHistory);
+
+/* ---------- tabs ---------- */
+const tabs = [...document.querySelectorAll('.tab')];
+function activate(id, updateHash = true) {
+  if (!tabs.some(t => t.dataset.panel === id)) id = 'ask';
+  tabs.forEach(t => {
+    const on = t.dataset.panel === id;
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+    t.tabIndex = on ? 0 : -1;
+    $('#panel-' + t.dataset.panel).hidden = !on;
+  });
+  if (updateHash) history.replaceState(null, '', '#' + id);
+  if (id === 'history') loadHistory();
+}
+tabs.forEach(t => t.addEventListener('click', () => activate(t.dataset.panel)));
+$('#nav').addEventListener('keydown', e => {
+  const i = tabs.indexOf(document.activeElement);
+  if (i < 0) return;
+  let n = null;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowRight') n = (i + 1) % tabs.length;
+  if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') n = (i - 1 + tabs.length) % tabs.length;
+  if (n !== null) { e.preventDefault(); tabs[n].focus(); activate(tabs[n].dataset.panel); }
+});
+
+/* ---------- start ---------- */
+createChat($('#chat-ask'), {
+  endpoint: '/api/chat',
+  placeholder: 'Type your question',
+  emptyText: 'Pick one to start, or write your own below.',
+  suggestions: ['What is Spring Boot?', 'Explain REST APIs in one line', 'What does a vector store do in RAG?']
+});
+createChat($('#chat-docs'), {
+  endpoint: '/api/rag/chat',
+  placeholder: 'Ask something your PDFs cover',
+  emptyText: 'These questions are covered by the Java PDFs in this project.',
+  suggestions: [
+    'What is the difference between JDK, JVM and JRE?',
+    'Explain inheritance in Java',
+    'What is the difference between ArrayList and LinkedList?'
+  ]
+});
+setupUploadForm({ form: '#form-resume', out: '#out-resume', endpoint: '/api/analyze', render: renderResume, busyLabel: 'Reviewing your resume', needsJd: false });
+setupUploadForm({ form: '#form-match', out: '#out-match', endpoint: '/api/ats-check', render: renderMatch, busyLabel: 'Comparing with the job description', needsJd: true });
+
+activate(location.hash.slice(1) || 'ask', false);
+checkHealth();
+setInterval(checkHealth, 30000);
+})();
+</script>
+</body>
+</html>
